@@ -5,7 +5,7 @@ table_1 = pd.read_csv(r'C:\Users\asus\OneDrive\Desktop\store_sales2.csv')
 table_2 = pd.read_csv(r'C:\Users\asus\OneDrive\Desktop\store_sales3.csv')
 
 # Specify the primary key column names
-primary_key = ['key']  # Adjust as needed
+primary_key = ['key','date']  # Adjust as needed
 
 # Ensure the primary key is in both tables
 for pk in primary_key:
@@ -13,8 +13,8 @@ for pk in primary_key:
         raise ValueError(f"Primary key '{pk}' is missing from one of the tables.")
 
 # Sort and set the primary key as index
-table_1 = table_1.sort_values(by=primary_key_columns).set_index(primary_key_columns)
-table_2 = table_2.sort_values(by=primary_key_columns).set_index(primary_key_columns)
+table_1 = table_1.sort_values(by=primary_key).set_index(primary_key)
+table_2 = table_2.sort_values(by=primary_key).set_index(primary_key)
 
 # Get user choice for level of detail
 print("Do you want to print all differences or just a summary?")
@@ -24,7 +24,7 @@ user_choice = input("Enter 'all' or 'summary': ").lower()
 common_columns = set(table_1.columns) & set(table_2.columns)
 
 # Identify missing rows between the two tables
-merged = table_1.merge(table_2, how='outer', on=primary_key_columns, indicator=True)
+merged = table_1.merge(table_2, how='outer', on=primary_key, indicator=True)
 
 missing_rows_table_1 = merged[merged['_merge'] == 'right_only']
 missing_rows_table_2 = merged[merged['_merge'] == 'left_only']
@@ -57,16 +57,16 @@ if user_choice == 'all':
     # Print missing rows if any
     if not missing_rows_table_1.empty:
         print("Rows missing in Table_1:")
-        if primary_key_columns[0] in missing_rows_table_1.columns:
-            print(missing_rows_table_1[primary_key_columns])
+        if primary_key[0] in missing_rows_table_1.columns:
+            print(missing_rows_table_1[primary_key])
         else:
             print("Primary key information not found. Here are the first few rows:")
             print(missing_rows_table_1.head())
 
     if not missing_rows_table_2.empty:
         print("Rows missing in Table_2:")
-        if primary_key_columns[0] in missing_rows_table_2.columns:
-            print(missing_rows_table_2[primary_key_columns])
+        if primary_key[0] in missing_rows_table_2.columns:
+            print(missing_rows_table_2[primary_key])
         else:
             print("Please see below missing Primary keys. Here are the first few rows:")
             print(missing_rows_table_2.head())
