@@ -1,0 +1,65 @@
+import pandas as pd
+
+# Load the two tables into DataFrames
+table_1 = pd.read_csv(r'C:\Users\asus\OneDrive\Desktop\store_sales2.csv')
+table_2 = pd.read_csv(r'C:\Users\asus\OneDrive\Desktop\store_sales3.csv')
+
+# Specify the primary key column names
+primary_key = ['key', 'date']
+
+# Ensure the primary key is in both tables
+for pk in primary_key:
+    if pk not in table_1.columns or pk not in table_2.columns:
+        raise ValueError(f"Primary key '{pk}' is missing from one of the tables.")
+
+# Sort and set the primary key as index
+table_1 = table_1.sort_values(by=primary_key).set_index(primary_key)
+table_2 = table_2.sort_values(by=primary_key).set_index(primary_key)
+
+# Find common columns between the two tables
+common_columns = set(table_1.columns) & set(table_2.columns)
+
+# Identify missing rows between the two tables
+merged = table_1.merge(table_2, how='outer', on=primary_key, indicator=True)
+
+missing_rows_table_1 = merged[merged['_merge'] == 'right_only']
+missing_rows_table_2 = merged[merged['_merge'] == 'left_only']
+
+# Check for column differences
+column_diff_counts = {}
+
+if user_choice == 'all':
+    for column in common_columns:
+        differences = table_1[column] != table_2[column]
+        different_rows = table_1[differences]
+
+        if not different_rows.empty:  # Only print if there are differences
+            column_diff_counts[column] = len(different_rows)
+            print(f"Differences in column '{column}':")
+
+            for idx in different_rows.index:
+                val_1 = different_rows.at[idx, column]
+                val_2 = table_2.loc[idx, column]  # Direct access to avoid default 'N/A'
+
+                if val_2 is not None:  # Ensure value exists
+                    print(f"  - Primary Key: {idx}")
+                    print(f"    Table_1: {val_1}")
+                    print(f"    Table_2: {val_2}")
+
+    # Only print missing rows if there are any
+    if not missing_rows_table_1.empty:
+        print("Rows missing in Table_1:")
+        print(missing_rows_table_1.index)
+
+    if not missing_rows_table_2.empty:
+        print("Rows missing in Table_2:")
+        print(missing_rows_table_2.index)
+
+elif user_choice == 'summary':
+    if not column_diff_counts:  # If there are no differences
+        print("No differences found in common columns.")
+    else:
+        # Summary of differences in common columns
+        print("Column Differences Summary:")
+        for column, diff_count in column_diff_counts.items():
+            print(f"  - {column}: {diff_count} differences")
