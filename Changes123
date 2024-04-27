@@ -1,0 +1,92 @@
+import pandas as pd
+
+# Sample DataFrames for testing (replace these with your actual data)
+table_1 = pd.read_csv(r'C:\Users\asus\OneDrive\Desktop\store_sales2.csv')
+table_2 = pd.read_csv(r'C:\Users\asus\OneDrive\Desktop\store_sales2.csv')
+
+# Primary key for identifying rows
+primary_key = ['key', 'date']
+
+# Ensure tables have primary keys
+for pk in primary_key:
+    if pk not in table_1.columns or pk not in table_2.columns:
+        raise ValueError(f"Primary key '{pk}' is missing from one of the tables.")
+
+# Check for duplicates in both tables
+def find_duplicates(df, primary_key):
+    return df[df.duplicated(subset=primary_key, keep=False)]
+
+duplicates_table_1 = find_duplicates(table_1, primary_key)
+duplicates_table_2 = find_duplicates(table_2, primary_key)
+
+if not duplicates_table_1.empty:
+    raise ValueError(f"Duplicates in Table_1:\n{duplicates_table_1[primary_key]}")
+
+if not duplicates_table_2.empty:
+    raise ValueError(f"Duplicates in Table_2:\n{duplicates_table_2[primary_key]}")
+
+# Initialize report data
+report_data = []
+
+# Set the primary key as index for both tables
+table_1 = table_1.sort_values(by=primary_key).set_index(primary_key)
+table_2 = table_2.sort_values(by=primary_key).set_index(primary_key)
+
+# Identify common columns for comparison
+common_columns = set(table_1.columns) & set(table_2.columns)
+
+# Identify missing rows in Table_1 and Table_2
+merged = table_1.merge(table_2, how='outer', on=primary_key, indicator=True)
+
+missing_rows_table_1 = merged[merged['_merge'] == 'right_only']
+missing_rows_table_2 = merged[merged['_merge'] == 'left_only']
+
+# Add missing rows to the report
+if not missing_rows_table_1.empty:
+    for idx in missing_rows_table_1.index:
+        report_data.append({
+            'Primary Key': idx,
+            'Issue': 'Missing in Table_1',
+            'Table_1': 'Missing',
+            'Table_2': 'Exists'
+        })
+
+if not missing_rows_table_2.empty:
+    for idx in missing_rows_table_2.index:
+        report_data.append({
+            'Primary Key': idx,
+            'Issue': 'Missing in Table_2',
+            'Table_1': 'Exists',
+            'Table_2': 'Missing'
+        })
+
+# Check for differences in common columns
+for column in common_columns:
+    # Compare values in Table_1 and Table_2
+    differences = table_1[column].combine(table_2[column], lambda x, y: pd.isna(x) == pd.isna(y) and x == y).astype(bool)
+
+    if not differences.all():
+        diff_indices = differences[~differences].index
+        for idx in diff_indices:
+            report_data.append({
+                'Primary Key': idx,
+                'Issue': f'Difference in column {column}',
+                'Table_1': table_1.loc[idx, column] if idx in table_1.index else 'Missing',
+                'Table_2': table_2.loc[idx, column] if idx in table_2.index else 'Missing'
+            })
+
+# Save the report to a CSV file
+report_filename = 'comparison_report2.csv'
+report_df = pd.DataFrame(report_data)
+report_df.to_csv(report_filename, index=False)
+
+print(f"Report saved to {report_filename}")
+
+# Display detailed report
+print("Detailed Report:")
+for item in report_data:
+    print(f"Primary Key: {item['Primary Key']}, Issue: {item['Issue']}")
+    if 'Table_1' in item:
+        print(f"  - Table_1: {item['Table_1']}")
+    if 'Table_2' in item:
+        print(f"  - Table_2: {item['Table_2']}")
