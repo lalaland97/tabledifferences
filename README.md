@@ -27,6 +27,7 @@ Reporting: It generates a comprehensive report summarizing the identified differ
 Output: The tool saves the generated report to a CSV file for further analysis and reference.
 
 Usage:
+
 1)Load two CSV files containing tabular data from any source.
 
 2)Specify the primary key column name(s) to be used for comparison.
@@ -36,6 +37,7 @@ Usage:
 4)Review the report to gain insights into differences, missing rows, and data integrity issues between the datasets.
 
 Benefits:
+
 Enhances data quality assurance processes by automating the comparison of large datasets.
 
 Saves time and effort by quickly identifying discrepancies and missing data.
