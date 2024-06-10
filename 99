@@ -1,0 +1,39 @@
+def generate_statements(tables, with_data=True, target_database=None, excluded_databases=None):
+    statements = []
+    table_mapping = {}
+
+    for table in tables:
+        db_name, tbl_name = table.split('.')
+        
+        # Skip tables from excluded databases
+        if excluded_databases and db_name in excluded_databases:
+            continue
+        
+        test_tbl_name = f"{tbl_name}_test"
+        if target_database:
+            new_table_name = f"{target_database}.{test_tbl_name}"
+        else:
+            new_table_name = f"{db_name}.{test_tbl_name}"
+        table_mapping[table] = new_table_name
+        if with_data:
+            statement = f"CREATE TABLE {new_table_name} AS {table} WITH DATA;"
+        else:
+            statement = f"CREATE TABLE {new_table_name} AS {table} WITH NO DATA;"
+        statements.append(statement)
+    
+    return statements, table_mapping
+
+def create_test_tables(sql_script, with_data=True, excluded_databases=None, target_database=None):
+    all_tables, volatile_tables = extract_tables(sql_script)
+    non_volatile_tables = [table for table in all_tables if table not in volatile_tables]
+
+    print("Non-volatile tables before filtering:", non_volatile_tables)
+
+    if excluded_databases:
+        non_volatile_tables = [table for table in non_volatile_tables if not any(table.startswith(db + '.') for db in excluded_databases)]
+
+    print("Non-volatile tables after filtering:", non_volatile_tables)
+
+    test_statements, table_mapping = generate_statements(non_volatile_tables, with_data, target_database, excluded_databases)
+    
+    return test_statements, table_mapping
