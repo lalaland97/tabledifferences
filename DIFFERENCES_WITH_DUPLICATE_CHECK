@@ -1,8 +1,8 @@
 import pandas as pd
 
-# Step 1: Load the two tables/queries into DataFrames
-table_1 = pd.read_csv(r'C:\Users\asus\Desktop\airbnb_test1.csv')
-table_2 = pd.read_csv(r'C:\Users\asus\Desktop\airbnb_test2.csv')
+# Step 1: Load the two tables/queries into DataFrames with low_memory=False
+table_1 = pd.read_csv(r'C:\Users\asus\OneDrive\Desktop\Airbnb_Data_changed_1.csv', low_memory=False) 
+table_2 = pd.read_csv(r'C:\Users\asus\OneDrive\Desktop\Airbnb_Data_changed.csv', low_memory=False)
 
 # Specify the primary key column names
 primary_key = ['id']  # Can use composite keys, but must generate uniqueness
@@ -41,6 +41,10 @@ if not duplicates_table_2.empty:
             'Table_2': 'Duplicate'
         })
 
+# Remove duplicates from the original tables for further processing
+table_1 = table_1.drop_duplicates(subset=primary_key)
+table_2 = table_2.drop_duplicates(subset=primary_key)
+
 # Set the primary key as index
 table_1.set_index(primary_key, inplace=True)
 table_2.set_index(primary_key, inplace=True)
@@ -54,9 +58,31 @@ merged = table_1.merge(table_2, how='outer', on=primary_key, indicator=True)
 missing_rows_table_1 = merged[merged['_merge'] == 'right_only'].index
 missing_rows_table_2 = merged[merged['_merge'] == 'left_only'].index
 
+# Create a common index
+common_index = table_1.index.union(table_2.index)
+
 # Fill missing values with a placeholder (e.g., 'null') before comparison
-table_1_filled = table_1.reindex(table_2.index).fillna('null')
-table_2_filled = table_2.reindex(table_1.index).fillna('null')
+table_1_filled = table_1.reindex(common_index).fillna('null')
+table_2_filled = table_2.reindex(common_index).fillna('null')
+
+# Debug: Print indices after reindexing
+print("Indices of table_1_filled:", table_1_filled.index)
+print("Indices of table_2_filled:", table_2_filled.index)
+
+# Ensure columns are converted to the same type before comparison
+def convert_columns_to_string(df, columns):
+    for column in columns:
+        df[column] = df[column].astype(str)
+    return df
+
+table_1_filled = convert_columns_to_string(table_1_filled, common_columns)
+table_2_filled = convert_columns_to_string(table_2_filled, common_columns)
+
+# Debug: Print column types before comparison
+print("Column types in table_1_filled:")
+print(table_1_filled.dtypes)
+print("Column types in table_2_filled:")
+print(table_2_filled.dtypes)
 
 # Check for column differences using vectorized operations
 for column in common_columns:
@@ -92,8 +118,10 @@ for idx in missing_rows_table_2:
 # Create a DataFrame for the report
 report_df = pd.DataFrame(report_data)
 
+# Prompt the user for the output file name
+report_filename = input("Please enter the filename for the report (with .csv extension): ")
+
 # Save the report to a CSV file
-report_filename = 'test6.csv'
 report_df.to_csv(report_filename, index=False)
 
 print(f"Report saved to {report_filename}")
