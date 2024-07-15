@@ -1,0 +1,92 @@
+import os
+import re
+import teradatasql
+
+def remove_comments(sql_script):
+    sql_script = re.sub(r'--.*', '', sql_script)
+    sql_script = re.sub(r'/\*.*?\*/', '', sql_script, flags=re.DOTALL)
+    return sql_script
+
+def extract_tables_info(sql_script, script_name):
+    sql_script = remove_comments(sql_script)
+
+    # Destination table patterns
+    dest_patterns = [
+        re.compile(r'CREATE\s+(MULTISET\s+|SET\s+)?TABLE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'CREATE\s+VOLATILE\s+TABLE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'CREATE\s+MULTISET\s+VOLATILE\s+TABLE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'CREATE\s+MULTISET\s+TABLE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'CREATE\s+TABLE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'INSERT\s+INTO\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'MERGE\s+INTO\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'UPDATE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'DELETE\s+FROM\s+(\w+\.\w+)', re.IGNORECASE)
+    ]
+
+    # Source table patterns
+    src_patterns = [
+        re.compile(r'FROM\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'JOIN\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'USING\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'IN\s+\(SELECT\s+.*FROM\s+(\w+\.\w+)\)', re.IGNORECASE),
+        re.compile(r'UPDATE\s+.*FROM\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'DELETE\s+.*WHERE\s+.*IN\s+\(SELECT\s+.*FROM\s+(\w+\.\w+)\)', re.IGNORECASE)
+    ]
+
+    dest_tables = set()
+    src_tables = set()
+
+    # Extract destination tables
+    for pattern in dest_patterns:
+        matches = pattern.findall(sql_script)
+        for match in matches:
+            if len(match) >= 2:
+                table_name = match[1]
+                dest_tables.add(table_name)
+
+    # Extract source tables
+    for pattern in src_patterns:
+        matches = pattern.findall(sql_script)
+        for match in matches:
+            if len(match) >= 1:
+                table_name = match[0]
+                src_tables.add(table_name)
+
+    excluded_volatile_tables = {table for table in dest_tables if 'VOLATILE' in table.upper()}
+
+    return dest_tables, src_tables
+
+def insert_into_teradata(script_name, src_tables, dest_tables):
+    # Teradata connection settings
+    host = 'your_teradata_host'
+    user = 'your_teradata_user'
+    password = 'your_teradata_password'
+    database = 'your_teradata_database'
+    table_name = 'your_teradata_table'
+
+    # Connect to Teradata
+    with teradatasql.connect(host=host, user=user, password=password, database=database) as conn:
+        with conn.cursor() as cur:
+            # Insert data into Teradata table
+            for src_table in src_tables:
+                for dest_table in dest_tables:
+                    cur.execute(f"INSERT INTO {database}.{table_name} (SCRIPT_NAME, SOURCE_TABLE, DESTINATION_TABLE) "
+                                f"VALUES (?, ?, ?);", (script_name, src_table, dest_table))
+                conn.commit()
+
+def process_sql_scripts(dir_path):
+    for filename in os.listdir(dir_path):
+        if filename.endswith(".sql"):
+            input_path = os.path.join(dir_path, filename)
+
+            with open(input_path, 'r') as file:
+                script = file.read()
+
+            script_name = os.path.splitext(filename)[0]
+            dest_tables, src_tables = extract_tables_info(script, script_name)
+            insert_into_teradata(script_name, src_tables, dest_tables)
+
+if __name__ == "__main__":
+    dir_path = r"C:\Users\asus\OneDrive\Desktop\sql_scripts"
+
+    process_sql_scripts(dir_path)
