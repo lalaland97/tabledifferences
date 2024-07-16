@@ -1,0 +1,118 @@
+import os
+import re
+import teradatasql
+
+def remove_comments(sql_script):
+    sql_script = re.sub(r'--.*', '', sql_script)
+    sql_script = re.sub(r'/\*.*?\*/', '', sql_script, flags=re.DOTALL)
+    return sql_script
+
+def extract_tables(sql_script):
+    sql_script = remove_comments(sql_script)
+
+    # Destination table patterns
+    dest_patterns = [
+        re.compile(r'CREATE\s+(MULTISET\s+|SET\s+)?TABLE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'CREATE\s+VOLATILE\s+TABLE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'CREATE\s+MULTISET\s+VOLATILE\s+TABLE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'CREATE\s+MULTISET\s+TABLE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'CREATE\s+TABLE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'INSERT\s+INTO\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'MERGE\s+INTO\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'UPDATE\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'DELETE\s+FROM\s+(\w+\.\w+)', re.IGNORECASE)
+    ]
+
+    # Source table patterns
+    src_patterns = [
+        re.compile(r'FROM\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'JOIN\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'USING\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'IN\s+\(SELECT\s+.*FROM\s+(\w+\.\w+)\)', re.IGNORECASE),
+        re.compile(r'UPDATE\s+.*FROM\s+(\w+\.\w+)', re.IGNORECASE),
+        re.compile(r'DELETE\s+.*WHERE\s+.*IN\s+\(SELECT\s+.*FROM\s+(\w+\.\w+)\)', re.IGNORECASE)
+    ]
+
+    all_tables = set()
+    volatile_tables = set()
+    source_tables = set()
+
+    # Extract destination tables
+    for pattern in dest_patterns:
+        matches = pattern.findall(sql_script)
+        for match in matches:
+            if len(match) >= 2:
+                table_name = match[1]
+                all_tables.add(table_name)
+                if 'VOLATILE' in match[0].strip().upper():
+                    volatile_tables.add(table_name)
+
+    # Extract source tables
+    for pattern in src_patterns:
+        matches = pattern.findall(sql_script)
+        for match in matches:
+            if len(match) >= 1:
+                table_name = match[0]
+                if table_name not in volatile_tables:
+                    source_tables.add(table_name)
+
+    all_tables = {table for table in all_tables if '.' in table}
+    volatile_tables = {table for table in volatile_tables if '.' in table}
+    source_tables = {table for table in source_tables if '.' in table}
+
+    return list(all_tables), list(source_tables), list(volatile_tables)
+
+def insert_into_teradata(con, script_name, all_tables, source_tables):
+    with con.cursor() as cur:
+        insert_query = """
+            INSERT INTO your_table_name (script_name, from_tables, to_tables)
+            VALUES (?, ?, ?)
+        """
+        from_tables = ','.join(source_tables)
+        to_tables = ','.join(all_tables)
+
+        cur.execute(insert_query, (script_name, from_tables, to_tables))
+        con.commit()
+
+def process_files(con, dir_path):
+    results = []
+
+    files_to_process = [f for f in os.listdir(dir_path) if f.endswith(".sql")]
+
+    for filename in files_to_process:
+        input_path = os.path.join(dir_path, filename)
+
+        with open(input_path, 'r') as file:
+            script = file.read()
+
+        all_tables, source_tables, volatile_tables = extract_tables(script)
+        non_volatile_tables = [tbl for tbl in all_tables if tbl not in volatile_tables]
+
+        results.append({
+            'script_name': filename,
+            'tables': non_volatile_tables
+        })
+
+        insert_into_teradata(con, filename, non_volatile_tables, source_tables)
+
+    return results
+
+def print_results(results):
+    for result in results:
+        print(f"Script: {result['script_name']}")
+        print("Tables:")
+        for table in result['tables']:
+            print(f"  - {table}")
+        print()
+
+if __name__ == "__main__":
+    dir_path = r"C:\Users\asus\OneDrive\Desktop\sql_scripts"
+    
+    # Assuming you already have a connection object
+    con = teradatasql.connect(host='your_teradata_host', user='your_username', password='your_password')
+    
+    results = process_files(con, dir_path)
+    print_results(results)
+    
+    # Close the connection
+    con.close()
