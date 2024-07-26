@@ -1,0 +1,77 @@
+import re
+
+file_name = "codetest1"  # STEP 1: Insert the name of the file here (without SQL extension)
+# Path to the script file
+script_path = f"C:\\Users\\id\\Desktop\\{file_name}.sql"  # STEP 2: Change to your BRID Credentials, then press run.
+# The labelled file should now be saved to your desktop.
+# Path to save the modified script with underscore 'labelled'
+output_path = f"C:\\Users\\id\\Desktop\\{file_name}__labelled.sql"
+
+# Function to add labels to SQL statements
+def add_labels(statement, counter):
+    labeled_content = f".label {counter}\n"  # string 1
+    labeled_content += f"SELECT '{counter}' as delete;\n"  # string 2
+    labeled_content += f"{statement.strip()}\n"  # add after the last string to ensure no spaces
+    return labeled_content, counter + 1  # then return and add 1 to counter
+
+# Function to check if a statement creates a volatile table
+def is_volatile_table_creation(statement):
+    match = re.search(r'\bCREATE\s+(MULTISET\s+)?VOLATILE\s+TABLE\s+(\w+)', statement, re.IGNORECASE)
+    if match:
+        return match.group(2)  # Return table name
+    return None
+
+# Function to check if a statement references any of the volatile tables
+def references_volatile_table(statement, volatile_tables):
+    for table in volatile_tables:
+        if re.search(r'\b' + re.escape(table) + r'\b', statement, re.IGNORECASE):
+            return True
+    return False
+
+# Read the script content from the file
+with open(script_path, 'r') as file:
+    script_content = file.read()
+
+# Split the script content into individual statements using the presence of semi-colons
+statements = re.split(r';\s*', script_content)
+
+# Initialize counter
+counter = 1
+
+# Initialize list to hold labeled statements
+labeled_statements = []
+
+# List to hold the names of volatile tables
+volatile_tables = []
+
+# Flag to indicate if we are in a volatile block
+in_volatile_block = False
+
+for statement in statements:  # for each individual statement
+    if statement.strip():  # make sure the statement is not empty
+        table_name = is_volatile_table_creation(statement)
+        
+        if table_name:
+            # Start new volatile block
+            volatile_tables.append(table_name)
+            in_volatile_block = True
+            labeled_statements.append(statement.strip() + ";\n")
+        elif in_volatile_block:
+            labeled_statements.append(statement.strip() + ";\n")
+            if re.search(r';', statement):
+                # End of volatile block
+                in_volatile_block = False
+        elif references_volatile_table(statement, volatile_tables):
+            labeled_statements.append(statement.strip() + ";\n")
+        else:
+            # Add labels to the statement and update counter
+            labeled_statement, counter = add_labels(statement, counter)
+            # Append labeled statement to the list
+            labeled_statements.append(labeled_statement)
+
+# Concatenate all labeled statements
+labeled_script = "".join(labeled_statements)
+
+# Write the modified script to a new file
+with open(output_path, 'w') as file:
+    file.write(labeled_script)
