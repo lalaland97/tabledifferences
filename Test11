@@ -2,9 +2,9 @@ import re
 
 file_name = "codetest1"  # STEP 1: Insert the name of the file here (without SQL extension)
 # Path to the script file
-script_path = f"C:\\Users\\G1441048\\Desktop\\{file_name}.sql"  # STEP 2: Change to your BRID Credentials, then press run.
+script_path = f"C:\\Users\\id\\Desktop\\{file_name}.sql"  # STEP 2: Change to your BRID Credentials, then press run.
 # Path to save the modified script with underscore 'labelled'
-output_path = f"C:\\Users\\Ge1441048\\Desktop\\{file_name}__labelled.sql"
+output_path = f"C:\\Users\\id\\Desktop\\{file_name}__labelled.sql"
 
 # Function to add labels to SQL statements
 def add_labels(statement, counter):
