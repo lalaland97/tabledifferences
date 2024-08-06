@@ -1,0 +1,39 @@
+import pandas as pd
+
+# Load the Excel file
+file_path = 'path_to_your_excel_file.xlsx'
+df = pd.read_excel(file_path)
+
+# Ensure the date/time column is in datetime format
+df['date/time'] = pd.to_datetime(df['date/time'])
+
+# Sort the dataframe by brid and date/time
+df = df.sort_values(by=['brid', 'date/time'])
+
+# Initialize an empty dictionary to store the total time spent by each person
+total_time = {}
+
+# Iterate through each person
+for brid, group in df.groupby('brid'):
+    # Initialize a variable to keep track of the session start time
+    session_start = None
+    # Initialize the total time for this person
+    total_time[brid] = pd.Timedelta(0)
+    
+    # Iterate through the group to pair 'joined' and 'left' actions
+    for _, row in group.iterrows():
+        if row['action'] == 'joined':
+            session_start = row['date/time']
+        elif row['action'] == 'left' and session_start is not None:
+            # Calculate the time spent in this session
+            session_duration = row['date/time'] - session_start
+            # Add to the total time for this person
+            total_time[brid] += session_duration
+            # Reset session_start
+            session_start = None
+
+# Convert the result to a DataFrame for better readability
+result_df = pd.DataFrame(total_time.items(), columns=['brid', 'total_time_spent'])
+
+# Save the result to a new Excel file
+result_df.to_excel('total_time_spent_by_each_person.xlsx', index=False)
