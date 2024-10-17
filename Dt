@@ -1,0 +1,6 @@
+SELECT 
+  CAST(SUBSTRING(REGEXP_REPLACE(stateentertime, 'T', ' '), 1, 19) AS TIMESTAMP FORMAT 'YYYY-MM-DD HH:MI:SS')  -- Clean and cast timestamp
+  + (CAST(SUBSTRING(stateentertime FROM CHAR_LENGTH(stateentertime) - 10 FOR 1) AS INTEGER) * INTERVAL '1' HOUR)  -- Adding hours
+  + INTERVAL '5' MINUTE  -- Adding 5 minutes
+  - (CAST(SUBSTRING(stateentertime FROM CHAR_LENGTH(stateentertime) - 9 FOR 2) AS INTEGER) * INTERVAL '1' MINUTE)  -- Subtracting minutes
+  AS log_timestamp
