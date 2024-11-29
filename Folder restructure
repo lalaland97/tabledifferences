@@ -1,0 +1,71 @@
+import os
+import shutil
+
+def move_files_and_cleanup(root_folder):
+    # File extensions to keep (case-insensitive)
+    allowed_extensions = ['.sql', '.txt']
+    
+    if not os.path.exists(root_folder):
+        print(f"Root folder does not exist: {root_folder}")
+        return
+    
+    for foldername, subfolders, filenames in os.walk(root_folder, topdown=False):  # Process subfolders first
+        print(f"Processing folder: {foldername}")
+        
+        # **Check if the folder has fewer than 10 items (files + subfolders)**
+        if len(filenames) + len(subfolders) < 10:
+            print(f"Folder has fewer than 10 items: {foldername}")
+            
+            parent_folder = os.path.dirname(foldername)  # **Get the parent folder**
+            print(f"Moving files from {foldername} to {parent_folder}")
+            
+            # **Move files from the folder to the parent folder**
+            for filename in filenames:
+                file_path = os.path.join(foldername, filename)
+                new_file_path = os.path.join(parent_folder, filename)
+                
+                # **Avoid overwriting files in the parent folder by appending a number if the file already exists**
+                counter = 1
+                while os.path.exists(new_file_path):
+                    name, ext = os.path.splitext(filename)
+                    new_file_path = os.path.join(parent_folder, f"{name}_{counter}{ext}")
+                    counter += 1
+
+                # **Move the file**
+                print(f"Moving: {file_path} to {new_file_path}")
+                shutil.move(file_path, new_file_path)
+
+            # **Remove the empty folder after moving files**
+            print(f"Removing empty folder: {foldername}")
+            os.rmdir(foldername)
+
+        # **Delete files with extensions not in allowed list (same as before)**
+        for filename in filenames:
+            file_path = os.path.join(foldername, filename)
+            file_extension = os.path.splitext(filename)[1].lower()
+
+            if file_extension not in allowed_extensions:
+                print(f"Deleting: {file_path}")
+                os.remove(file_path)
+                continue
+
+            # **Rename files: remove spaces, make lowercase, and replace '-' with '_'**
+            new_filename = filename.lower().replace(' ', '').replace('-', '_')
+            
+            # **Rename .txt files to .sql**
+            if new_filename.endswith('.txt'):
+                new_filename = new_filename.replace('.txt', '.sql')
+            
+            new_file_path = os.path.join(foldername, new_filename)
+            if file_path != new_file_path:
+                print(f"Renaming: {file_path} to {new_file_path}")
+                os.rename(file_path, new_file_path)
+
+        # **Delete empty folders (same as before)**
+        if not os.listdir(foldername):  # Check if the folder is empty
+            print(f"Deleting empty folder: {foldername}")
+            os.rmdir(foldername)
+
+# Usage
+root_folder = r'path/to/your/folder'  # Replace with the path to your root folder
+move_files_and_cleanup(root_folder)
