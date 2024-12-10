@@ -1,0 +1,87 @@
+import sqlparse
+
+def limit_indentation_depth(formatted_sql, max_depth=3):
+    """
+    Limits the indentation depth of a formatted SQL query.
+    
+    Args:
+        formatted_sql (str): The SQL query already formatted with sqlparse.
+        max_depth (int): The maximum number of indentations allowed.
+    
+    Returns:
+        str: SQL query with limited indentation.
+    """
+    lines = formatted_sql.split('\n')
+    adjusted_lines = []
+
+    for line in lines:
+        # Count leading spaces and calculate indentation level
+        leading_spaces = len(line) - len(line.lstrip())
+        indent_level = leading_spaces // 4  # Assuming 4 spaces per indent
+        
+        # Cap the indentation level
+        if indent_level > max_depth:
+            indent_level = max_depth
+            line = ' ' * (indent_level * 4) + line.lstrip()
+        
+        adjusted_lines.append(line)
+    
+    return '\n'.join(adjusted_lines)
+
+def format_sql_with_max_indent(sql_query, max_depth=3):
+    """
+    Formats an SQL query with a maximum indentation depth.
+    
+    Args:
+        sql_query (str): The raw SQL query to be formatted.
+        max_depth (int): The maximum number of indentations allowed.
+    
+    Returns:
+        str: The formatted SQL query.
+    """
+    # Step 1: Format the SQL query using sqlparse
+    formatted_sql = sqlparse.format(
+        sql_query,
+        keyword_case='upper',  # Capitalize keywords
+        reindent=True,         # Enable reindentation
+        indent_width=4         # Set indentation width to 4 spaces
+    )
+    
+    # Step 2: Limit the indentation depth
+    return limit_indentation_depth(formatted_sql, max_depth)
+
+def format_sql_file(input_file, output_file, max_depth=3):
+    """
+    Reads an SQL query from a file, formats it with a maximum indentation depth,
+    and writes the formatted SQL to another file.
+    
+    Args:
+        input_file (str): Path to the file containing the raw SQL query.
+        output_file (str): Path to the file where the formatted SQL will be saved.
+        max_depth (int): The maximum number of indentations allowed.
+    """
+    try:
+        # Read the raw SQL query from the input file
+        with open(input_file, 'r') as file:
+            raw_sql = file.read()
+
+        # Format the SQL with a maximum indentation depth
+        formatted_sql = format_sql_with_max_indent(raw_sql, max_depth)
+
+        # Write the formatted SQL to the output file
+        with open(output_file, 'w') as file:
+            file.write(formatted_sql)
+
+        print(f"Formatted SQL has been written to {output_file}.")
+    except FileNotFoundError:
+        print(f"Error: The file {input_file} does not exist.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Example usage
+if __name__ == "__main__":
+    input_file_path = "input.sql"  # Replace with your input file path
+    output_file_path = "output.sql"  # Replace with your desired output file path
+    max_indentation_depth = 3  # Maximum allowed indentation depth
+
+    format_sql_file(input_file_path, output_file_path, max_indentation_depth)
