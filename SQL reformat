@@ -1,0 +1,27 @@
+import sqlparse
+from sqlparse.sql import IdentifierList, Identifier
+from sqlparse.tokens import Keyword, DML
+
+def format_sql(sql_query):
+    """
+    Formats an SQL query by capitalizing keywords, adding indents, and making it more readable.
+    """
+    # Use sqlparse to format the SQL
+    formatted_query = sqlparse.format(
+        sql_query,
+        keyword_case='upper',  # Capitalize all SQL keywords
+        reindent=True,         # Enable indentation
+        indent_tabs=False,     # Use spaces instead of tabs
+        indent_width=4         # Set the indentation width
+    )
+    return formatted_query
+
+# Example usage
+if __name__ == "__main__":
+    raw_sql = """
+    select name, age from users where age > 30 order by age desc;
+    """
+    
+    formatted_sql = format_sql(raw_sql)
+    print("Formatted SQL:")
+    print(formatted_sql)
