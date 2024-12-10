@@ -1,0 +1,39 @@
+import sqlparse
+
+def format_sql_file(input_file, output_file):
+    """
+    Reads an SQL query from a file, formats it, and writes the formatted SQL to another file.
+
+    Args:
+        input_file (str): Path to the file containing the raw SQL query.
+        output_file (str): Path to the file where the formatted SQL will be saved.
+    """
+    try:
+        # Read the raw SQL query from the input file
+        with open(input_file, 'r') as file:
+            raw_sql = file.read()
+
+        # Format the SQL using sqlparse
+        formatted_sql = sqlparse.format(
+            raw_sql,
+            keyword_case='upper',  # Capitalize SQL keywords
+            reindent=True,         # Enable indentation
+            indent_width=4         # Set the indentation width
+        )
+
+        # Write the formatted SQL to the output file
+        with open(output_file, 'w') as file:
+            file.write(formatted_sql)
+
+        print(f"Formatted SQL has been written to {output_file}.")
+    except FileNotFoundError:
+        print(f"Error: The file {input_file} does not exist.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Example usage
+if __name__ == "__main__":
+    input_file_path = "input.sql"  # Replace with your input file path
+    output_file_path = "output.sql"  # Replace with your desired output file path
+
+    format_sql_file(input_file_path, output_file_path)
