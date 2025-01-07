@@ -1,0 +1,45 @@
+import re
+
+def transform_sql_date_conditions(input_file, output_file):
+    """
+    Reads a SQL script, finds conditions like `strt_dt >= 'YYYY-MM-DD'`,
+    and replaces them with a more flexible date range condition:
+    `strt_dt between '${REFRESH_START_DATE}' and '${REFRESH_END_DATE}'`.
+
+    Args:
+        input_file (str): The path to the SQL file to read from.
+        output_file (str): The path to save the updated SQL file.
+    """
+    # Define the pattern to search for specific date conditions in the SQL
+    date_condition_pattern = r"strt_dt\s*>=\s*'(\d{4}-\d{2}-\d{2})'"
+    
+    # Define the replacement string
+    replacement_condition = "strt_dt between '${REFRESH_START_DATE}' and '${REFRESH_END_DATE}'"
+
+    try:
+        # Read the original SQL script
+        with open(input_file, 'r') as infile:
+            sql_content = infile.read()
+
+        # Apply the transformation
+        updated_sql_content = re.sub(date_condition_pattern, replacement_condition, sql_content)
+
+        # Write the updated SQL script back to the output file
+        with open(output_file, 'w') as outfile:
+            outfile.write(updated_sql_content)
+
+        print(f"SQL script successfully transformed and saved to: {output_file}")
+
+    except FileNotFoundError:
+        print(f"Error: The file '{input_file}' does not exist.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+
+if __name__ == "__main__":
+    # Provide paths to the input and output SQL files
+    input_path = 'input.sql'  # Replace with the path to your SQL script
+    output_path = 'output.sql'  # Replace with the desired output file path
+
+    # Call the function to transform the SQL script
+    transform_sql_date_conditions(input_path, output_path)
