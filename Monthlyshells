@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Function to increment date by a given number of months
+increment_months() {
+    date -d "$1 -$2 month" +"%Y-%m"
+}
+
+# Validate paths
+for path in "$LOGON_FILE" "$LOG_FILE_PATH" "$SQL_FILE_PATH"; do
+    if [ ! -e "$path" ]; then
+        echo "Error: Path does not exist: $path" >&2
+        exit 1
+    fi
+done
+
+# Monthly refresh logic - specify how many months back to go
+# Default to 1 month back, but can be adjusted by setting the increment value
+increment=1  # Set this variable to adjust how many months back to go (e.g., 1, 2, etc.)
+
+# Get the date of the specified month in yyyy-mm format
+monthly_refresh_date=$(date -d "$(date +%Y-%m-01) -$increment month" +%Y-%m)
+
+# Define the common log file for both daily and monthly scripts
+LOG_FILE="$LOG_FILE_PATH/${SCRIPT_NAME}_All.log"
+
+# Redirect output to the same log file
+exec >> "$LOG_FILE" 2>&1
+
+# Notify start of the monthly process
+echo "Starting monthly refresh for the period: $monthly_refresh_date"
+
+# List of SQL files to run for monthly refresh - manually specified
+sql_files=("example_monthly.sql" "another_monthly_script.sql" "yet_another_monthly_script.sql")
+
+# For each SQL file, run it and log success or failure
+for sql_file in "${sql_files[@]}"; do
+    if [ ! -f "$SQL_FILE_PATH/$sql_file" ]; then
+        echo "SQL file not found: $SQL_FILE_PATH/$sql_file" >&2
+        mailx -s "[ERROR] $SCRIPT_NAME (Monthly) - Missing SQL File - $(date)" "$EMAIL_LIST" < "$LOG_FILE"
+        continue
+    fi
+
+    # Run the SQL script using BTEQ for Teradata
+    bteq < "$SQL_FILE_PATH/$sql_file" >> "$LOG_FILE" 2>&1
+
+    if [ $? -ne 0 ]; then
+        echo "SQL execution failed: $sql_file" >&2
+        mailx -s "[ERROR] FAILURE - $SCRIPT_NAME (Monthly) $(date)" "$EMAIL_LIST" < "$LOG_FILE"
+    else
+        echo "SQL execution succeeded: $sql_file"
+        mailx -s "[SUCCESS] $SCRIPT_NAME (Monthly) - $sql_file Completed Successfully $(date)" "$EMAIL_LIST" < "$LOG_FILE"
+    fi
+done
+
+# Ensure log file has proper permissions
+chmod 640 "$LOG_FILE"
+
+# Final success message after all scripts complete
+echo "$SCRIPT_NAME (Monthly) has completed successfully." | mailx -s "[SUCCESS] $SCRIPT_NAME (Monthly) $(date)" "$EMAIL_LIST"
