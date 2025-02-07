@@ -1,0 +1,34 @@
+SELECT 
+    main.channel, 
+    main.report_date, 
+    main.start_volume, 
+    COUNT(*) AS record_count, 
+    CAST(main.success_volume AS DECIMAL(18,8)) / main.completion_volume * 100 AS success_rate, 
+    main.completion_volume, 
+    main.start_volume, 
+    main.month,
+    -- Calculate the success percentage difference from last month
+    CASE 
+        WHEN prev_month.completion_volume IS NULL THEN NULL
+        ELSE 
+            ((CAST(main.success_volume AS DECIMAL(18,8)) / main.completion_volume * 100) - 
+             (CAST(prev_month.success_volume AS DECIMAL(18,8)) / prev_month.completion_volume * 100)) 
+            / (CAST(prev_month.success_volume AS DECIMAL(18,8)) / prev_month.completion_volume * 100) * 100
+    END AS success_pct_diff_from_last_month
+FROM 
+    some_table AS main
+LEFT JOIN 
+    some_table AS prev_month
+    ON prev_month.channel = main.channel
+    AND prev_month.report_date = ADD_MONTHS(main.report_date, -1)
+WHERE 
+    main.channel LIKE 'xyz%' 
+    AND ABS(prev_month.completion_volume - main.completion_volume) <= (0.10 * prev_month.completion_volume)
+GROUP BY 
+    main.channel, 
+    main.report_date, 
+    main.start_volume, 
+    main.completion_volume, 
+    main.month, 
+    prev_month.completion_volume, 
+    prev_month.success_volume;
