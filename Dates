@@ -1,7 +1,0 @@
-SELECT 
-  CAST(stateentertime AS TIMESTAMP FORMAT 'YYYY-MM-DDTHH:MI:SS') 
-  + (CAST(SUBSTRING(stateentertime FROM CHAR_LENGTH(stateentertime) - 4 FOR 1) AS INTEGER) * INTERVAL '1' HOUR)  -- Adding hours
-  + INTERVAL '5' MINUTE  -- Adding 5 minutes
-  - (CAST(SUBSTRING(stateentertime FROM CHAR_LENGTH(stateentertime) - 3 FOR 2) AS INTEGER) * INTERVAL '1' MINUTE) -- Subtracting minutes
-  AS log_timestamp
-FROM your_table;
